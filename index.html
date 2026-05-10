@@ -3,148 +3,199 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>연립방정식 타지아 퍼즐</title>
+    <title>연립방정식 타지아 - 수학 활동</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        .tarsia-piece { touch-action: none; transition: transform 0.2s, border-color 0.2s; }
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+        
+        body { 
+            font-family: 'Noto Sans KR', sans-serif; 
+            background-color: #f1f5f9; 
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        /* 퍼즐 조각 스타일: 가독성을 위해 크기를 대폭 상향 */
+        .tarsia-piece { 
+            position: relative;
+            background-color: white;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            overflow: hidden;
+            border: 4px solid #fff;
+        }
+        
+        /* 회전 애니메이션 */
         .rotation-0 { transform: rotate(0deg); }
         .rotation-1 { transform: rotate(90deg); }
         .rotation-2 { transform: rotate(180deg); }
         .rotation-3 { transform: rotate(270deg); }
-        .slot-wrong { background-color: #fee2e2; border-color: #ef4444; }
-        @media print { .no-print { display: none; } }
+
+        /* 선택 시 효과 */
+        .selected-piece { 
+            outline: 8px solid #2563eb; 
+            outline-offset: -2px;
+            z-index: 100 !important;
+            transform: scale(1.08);
+        }
+
+        /* 오답 표시 */
+        .slot-wrong { 
+            background-color: #fee2e2 !important; 
+            box-shadow: inset 0 0 0 8px #ef4444 !important;
+        }
+
+        /* 텍스트 영역: 절대 겹치지 않게 면적을 엄격히 배분 */
+        .edge-zone {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-weight: 900;
+            line-height: 1.1;
+            color: #0f172a;
+            /* 긴 식도 깨지지 않게 유동적 폰트 크기 적용 */
+            font-size: clamp(0.9rem, 3vw, 1.4rem);
+            padding: 10px;
+            overflow: hidden;
+        }
+
+        /* 텍스트가 중앙에서 충돌하지 않도록 33% 영역만 사용 */
+        .zone-top    { top: 0; left: 0; width: 100%; height: 33%; border-bottom: 2px dashed #f1f5f9; }
+        .zone-right  { right: 0; top: 0; width: 33%; height: 100%; border-left: 2px dashed #f1f5f9; }
+        .zone-bottom { bottom: 0; left: 0; width: 100%; height: 33%; border-top: 2px dashed #f1f5f9; }
+        .zone-left   { left: 0; top: 0; width: 33%; height: 100%; border-right: 2px dashed #f1f5f9; }
+
+        /* 회전 텍스트 방향 보정 */
+        .rotated-text { display: block; width: 100%; white-space: pre-line; }
+        .zone-right .rotated-text  { transform: rotate(90deg); width: 160px; }
+        .zone-bottom .rotated-text { transform: rotate(180deg); }
+        .zone-left .rotated-text   { transform: rotate(-90deg); width: 160px; }
+
+        .pop-in { animation: popIn 0.3s ease-out; }
+        @keyframes popIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen font-sans text-slate-800">
+<body class="min-h-screen pb-20">
 
-    <!-- 이름 입력 화면 -->
-    <div id="login-screen" class="fixed inset-0 bg-blue-600 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center">
-            <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600">
-                <i data-lucide="user" size="40"></i>
+    <!-- 이름 입력 -->
+    <div id="login-screen" class="fixed inset-0 bg-blue-900 z-[200] flex items-center justify-center p-4">
+        <div class="bg-white rounded-[3rem] p-12 max-w-md w-full shadow-2xl text-center pop-in border-b-8 border-blue-500">
+            <div class="w-24 h-24 bg-blue-100 rounded-3xl mx-auto mb-6 flex items-center justify-center text-blue-600">
+                <i data-lucide="award" size="56"></i>
             </div>
-            <h1 class="text-2xl font-bold mb-2">수학 타지아 활동</h1>
-            <p class="text-slate-500 mb-6">활동을 시작하기 위해 이름을 입력하세요.</p>
-            <input type="text" id="student-name" placeholder="이름을 입력하세요" class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 mb-4 focus:border-blue-500 outline-none transition-all text-center text-lg">
-            <button onclick="startGame()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg">활동 시작하기</button>
+            <h1 class="text-3xl font-black mb-2 text-slate-800">수학 타지아 챌린지</h1>
+            <p class="text-slate-500 mb-8 font-bold text-lg text-pretty">연립방정식 퍼즐을 맞추고 트로피를 차지하세요!</p>
+            <input type="text" id="student-name" placeholder="학생 이름을 입력하세요" class="w-full border-4 border-slate-100 bg-slate-50 rounded-2xl px-6 py-4 mb-6 text-center text-xl font-black outline-none focus:border-blue-600 focus:bg-white transition-all shadow-inner">
+            <button onclick="startGame()" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-xl shadow-lg hover:bg-blue-700 active:scale-95 transition-all">활동 시작</button>
         </div>
     </div>
 
-    <!-- 메인 게임 화면 -->
-    <div id="game-screen" class="hidden">
-        <header class="max-w-5xl mx-auto p-4 md:p-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div>
-                <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                    <i data-lucide="layout-grid" class="text-blue-600"></i> <span id="display-name"></span> 학생의 타지아
-                </h1>
-                <p class="text-slate-500 text-sm">인접한 변의 방정식과 해를 맞춰 퍼즐을 완성하세요.</p>
-            </div>
-            <div class="flex gap-2 no-print">
-                <button onclick="checkAnswer()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-md flex items-center gap-2">
-                    <i data-lucide="check-circle-2" size="18"></i> 정답 확인
-                </button>
-                <button onclick="location.reload()" class="bg-white border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-50 flex items-center gap-2 text-slate-600">
-                    <i data-lucide="refresh-cw" size="18"></i> 다시 시작
-                </button>
-            </div>
-        </header>
+    <!-- 메인 화면 -->
+    <div id="game-screen" class="hidden p-4 md:p-8">
+        <div class="max-w-7xl mx-auto">
+            <header class="mb-10 flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-[2.5rem] shadow-sm gap-6 border-b-4 border-blue-50">
+                <div class="flex items-center gap-5">
+                    <div class="bg-blue-600 p-4 rounded-2xl text-white shadow-xl">
+                        <i data-lucide="user-check" size="32"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-black text-slate-800"><span id="display-name" class="text-blue-600"></span> 학생</h2>
+                        <p class="text-slate-400 font-bold text-sm uppercase tracking-widest">Linear Systems Tarsia</p>
+                    </div>
+                </div>
+                <div class="flex gap-4 w-full md:w-auto">
+                    <button onclick="checkAnswer()" class="flex-1 md:flex-none bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black text-lg shadow-lg hover:bg-indigo-700 transition-all">정답 확인</button>
+                    <button onclick="resetBoard()" class="bg-slate-200 text-slate-700 px-6 py-4 rounded-2xl font-black hover:bg-slate-300">보드 비우기</button>
+                </div>
+            </header>
 
-        <main class="max-w-6xl mx-auto px-4 pb-20 grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <!-- 보드 영역 (8개 컬럼) -->
-            <div class="lg:col-span-8 flex justify-center items-start">
-                <div id="board" class="grid grid-cols-3 gap-2 bg-slate-200 p-3 rounded-2xl shadow-inner border-4 border-slate-300">
-                    <!-- 보드 슬롯 9개가 자바스크립트로 생성됨 -->
+            <div class="flex flex-col lg:flex-row gap-12 justify-center items-center lg:items-start">
+                <!-- 퍼즐 보드 -->
+                <div id="board" class="grid grid-cols-3 gap-6 bg-slate-400 p-8 rounded-[4rem] shadow-2xl border-8 border-slate-500" style="width: fit-content;"></div>
+                
+                <!-- 보관함 -->
+                <div class="w-full lg:w-[420px] bg-white/90 backdrop-blur-md p-8 rounded-[3rem] shadow-xl border-2 border-white">
+                    <div class="flex items-center justify-between mb-8">
+                        <h3 class="font-black text-xl text-slate-800 flex items-center gap-2">
+                            <i data-lucide="package" class="text-blue-500"></i> 조각 목록
+                        </h3>
+                        <span id="inventory-count" class="bg-blue-100 text-blue-600 px-4 py-1.5 rounded-full text-sm font-black">9개</span>
+                    </div>
+                    <div id="inventory" class="flex flex-wrap gap-4 justify-center min-h-[450px] content-start overflow-y-auto"></div>
+                    <p class="text-center text-slate-400 mt-6 text-sm font-bold">조각을 눌러서 보드에 넣거나 다시 뺄 수 있습니다.</p>
                 </div>
             </div>
-
-            <!-- 보관함 영역 (4개 컬럼) -->
-            <div class="lg:col-span-4 flex flex-col gap-4">
-                <h3 class="font-bold text-slate-700 flex items-center gap-2">
-                    <i data-lucide="box" size="18"></i> 조각 보관함
-                </h3>
-                <div id="inventory" class="bg-slate-100 p-4 rounded-2xl border border-slate-200 min-h-[400px] flex flex-wrap gap-3 justify-center content-start shadow-inner">
-                    <!-- 조각들이 생성됨 -->
-                </div>
-            </div>
-        </main>
+        </div>
     </div>
 
-    <!-- 성공 모달 -->
-    <div id="success-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center z-[100] p-4">
-        <div class="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl animate-bounce-in">
-            <div class="w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6 text-yellow-600">
-                <i data-lucide="trophy" size="60"></i>
+    <!-- 성공 팝업 -->
+    <div id="success-modal" class="fixed inset-0 bg-slate-900/95 backdrop-blur-xl hidden items-center justify-center z-[300] p-4">
+        <div class="bg-white rounded-[4rem] p-12 max-w-md w-full text-center shadow-2xl pop-in">
+            <div class="text-9xl mb-6">🏆</div>
+            <h2 class="text-4xl font-black mb-2 text-slate-800 tracking-tighter">PERFECT!</h2>
+            <p class="text-slate-500 font-bold mb-8">모든 연립방정식을 완벽하게 풀었습니다!</p>
+            <div class="bg-blue-50 p-8 rounded-[2.5rem] mb-10 border-2 border-blue-100">
+                <p class="text-3xl font-black text-blue-700 mb-2" id="cert-name"></p>
+                <div class="w-16 h-2 bg-blue-200 mx-auto mb-4 rounded-full"></div>
+                <p class="text-slate-400 text-sm font-bold" id="cert-time"></p>
             </div>
-            <h2 class="text-3xl font-bold text-slate-900 mb-2">대단해요!</h2>
-            <div id="certificate-box" class="border-4 border-double border-blue-100 p-6 rounded-2xl mb-6 bg-slate-50">
-                <p class="text-slate-500 text-sm mb-1">인증서</p>
-                <h3 class="text-2xl font-bold text-blue-600 mb-2"><span id="cert-name"></span></h3>
-                <p class="text-slate-700 font-medium">위 학생은 연립방정식 타지아 활동을<br>성공적으로 마쳤음을 인증합니다.</p>
-                <div class="mt-4 pt-4 border-t border-slate-200 text-xs text-slate-400">
-                    인증 코드: <span id="cert-code"></span><br>
-                    일시: <span id="cert-date"></span>
-                </div>
-            </div>
-            <button onclick="window.print()" class="w-full bg-slate-800 text-white py-4 rounded-2xl font-bold text-lg mb-3 hover:bg-slate-900 transition-all flex items-center justify-center gap-2">
-                <i data-lucide="printer"></i> 화면 캡처 또는 인쇄
-            </button>
-            <p class="text-slate-400 text-sm">이 화면을 선생님께 보여드리세요!</p>
+            <button onclick="location.reload()" class="w-full bg-slate-900 text-white py-5 rounded-3xl font-black text-xl hover:bg-black transition-all">다시 하기</button>
         </div>
     </div>
 
     <script>
-        // --- 데이터 및 상태 관리 ---
         let studentName = "";
-        let pieces = [];
-        let board = Array(9).fill(null);
+        let boardState = Array(9).fill(null);
         let inventory = [];
-        let selectedPieceId = null;
-
-        function generateData() {
-            const data = [];
-            for (let i = 0; i < 12; i++) {
-                const x = Math.floor(Math.random() * 5) + 1;
-                const y = Math.floor(Math.random() * 5) + 1;
-                const type = Math.floor(Math.random() * 3);
-                let eq1, eq2;
-                if (type === 0) { eq1 = `x+y=${x+y}`; eq2 = `x-y=${x-y}`; }
-                else if (type === 1) { eq1 = `2x+y=${2*x+y}`; eq2 = `x+2y=${x+2*y}`; }
-                else { eq1 = `3x-y=${3*x-y}`; eq2 = `x+y=${x+y}`; }
-                data.push({ prob: `${eq1}\n${eq2}`, sol: `(${x},${y})` });
-            }
-            return data;
-        }
+        let selectedId = null;
 
         function startGame() {
-            const nameInput = document.getElementById('student-name');
-            if (!nameInput.value.trim()) {
-                alert("이름을 입력해주세요!");
-                return;
-            }
-            studentName = nameInput.value.trim();
+            const input = document.getElementById('student-name');
+            if(!input.value.trim()) return;
+            studentName = input.value.trim();
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('game-screen').classList.remove('hidden');
             document.getElementById('display-name').innerText = studentName;
             initGame();
-            lucide.createIcons();
+        }
+
+        function getEquationData() {
+            const data = [];
+            for(let i=0; i<12; i++) {
+                const x = Math.floor(Math.random()*9)-4; 
+                const y = Math.floor(Math.random()*9)-4;
+                const sets = [
+                    { q: `x+y = ${x+y}\nx-y = ${x-y}`, a: `(${x}, ${y})` },
+                    { q: `2x+y = ${2*x+y}\nx+y = ${x+y}`, a: `x=${x}\ny=${y}` },
+                    { q: `x+2y = ${x+2*y}\nx-y = ${x-y}`, a: `(${x}, ${y})` }
+                ];
+                data.push(sets[Math.floor(Math.random()*sets.length)]);
+            }
+            return data;
         }
 
         function initGame() {
-            const eqData = generateData();
-            const newPieces = [];
-            for (let i = 0; i < 9; i++) {
-                newPieces.push({ id: i, correctSlot: i, rotation: 0, edges: [null, null, null, null] });
-            }
-            const hConns = [[0, 1, 1, 3], [1, 1, 2, 3], [3, 1, 4, 3], [4, 1, 5, 3], [6, 1, 7, 3], [7, 1, 8, 3]];
-            const vConns = [[0, 2, 3, 0], [1, 2, 4, 0], [2, 2, 5, 0], [3, 2, 6, 0], [4, 2, 7, 0], [5, 2, 8, 0]];
-            [...hConns, ...vConns].forEach((c, i) => {
-                newPieces[c[0]].edges[c[1]] = eqData[i].prob;
-                newPieces[c[2]].edges[c[3]] = eqData[i].sol;
-            });
+            const eqData = getEquationData();
+            const rawPieces = [];
+            for(let i=0; i<9; i++) rawPieces.push({ id: i, correctSlot: i, rotation: 0, edges: [null, null, null, null] });
             
-            inventory = [...newPieces].sort(() => Math.random() - 0.5).map(p => ({
-                ...p, rotation: Math.floor(Math.random() * 4)
+            const conns = [[0,1,1,3],[1,1,2,3],[3,1,4,3],[4,1,5,3],[6,1,7,3],[7,1,8,3],[0,2,3,0],[1,2,4,0],[2,2,5,0],[3,2,6,0],[4,2,7,0],[5,2,8,0]];
+            conns.forEach((c, i) => { 
+                rawPieces[c[0]].edges[c[1]] = eqData[i].q; 
+                rawPieces[c[2]].edges[c[3]] = eqData[i].a; 
+            });
+
+            inventory = rawPieces.sort(() => Math.random() - 0.5).map(p => ({
+                ...p, 
+                rotation: Math.floor(Math.random()*4) 
             }));
             render();
         }
@@ -155,53 +206,52 @@
             boardEl.innerHTML = '';
             invEl.innerHTML = '';
 
-            board.forEach((piece, idx) => {
+            boardState.forEach((piece, i) => {
                 const slot = document.createElement('div');
-                slot.className = `w-28 h-28 md:w-36 md:h-36 rounded-xl flex items-center justify-center transition-all ${!piece ? 'bg-slate-100/50 border-2 border-dashed border-slate-300' : ''}`;
-                slot.onclick = () => onSlotClick(idx);
-                if (piece) {
-                    slot.appendChild(createPieceEl(piece, idx, true));
-                } else {
-                    slot.innerHTML = `<span class="text-slate-300 font-black text-2xl">${idx + 1}</span>`;
-                }
+                slot.className = `w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 rounded-[2.5rem] flex items-center justify-center transition-all ${!piece ? 'bg-slate-300 border-4 border-dashed border-slate-400' : 'bg-white shadow-xl'}`;
+                slot.onclick = () => onSlotClick(i);
+                if(piece) slot.appendChild(createPieceUI(piece, true));
+                else slot.innerHTML = `<span class="text-slate-500 font-black text-3xl">${i+1}</span>`;
                 boardEl.appendChild(slot);
             });
 
-            inventory.forEach((piece, idx) => {
-                const pEl = createPieceEl(piece, idx, false);
-                invEl.appendChild(pEl);
-            });
+            inventory.forEach(piece => invEl.appendChild(createPieceUI(piece, false)));
+            document.getElementById('inventory-count').innerText = `${inventory.length}개`;
             lucide.createIcons();
         }
 
-        function createPieceEl(piece, idx, isBoard) {
+        function createPieceUI(piece, isBoard) {
             const container = document.createElement('div');
-            container.className = `tarsia-piece relative bg-white border-2 rounded-lg cursor-pointer overflow-hidden flex items-center justify-center shadow-sm hover:border-blue-400 ${selectedPieceId === piece.id ? 'ring-4 ring-blue-300 border-blue-500' : 'border-slate-300'} ${isBoard ? 'w-full h-full' : 'w-24 h-24 text-[8px]'}`;
+            container.className = `tarsia-piece flex items-center justify-center overflow-hidden transition-all ${selectedId === piece.id ? 'selected-piece' : ''} ${isBoard ? 'w-full h-full' : 'w-28 h-28 sm:w-36 sm:h-36 shadow-xl'}`;
             
-            const inner = document.createElement('div');
-            inner.className = `w-full h-full relative transition-transform duration-300 rotation-${piece.rotation}`;
+            const rotator = document.createElement('div');
+            rotator.className = `w-full h-full relative transition-all duration-500 rotation-${piece.rotation}`;
             
-            const edgeLayouts = [
-                "top-0 left-0 w-full h-1/3 items-start border-b border-dashed border-slate-100",
-                "top-0 right-0 h-full w-1/3 items-center rotate-90 border-l border-dashed border-slate-100",
-                "bottom-0 left-0 w-full h-1/3 items-end rotate-180 border-t border-dashed border-slate-100",
-                "top-0 left-0 h-full w-1/3 items-center -rotate-90 border-r border-dashed border-slate-100"
-            ];
-
-            piece.edges.forEach((text, ei) => {
-                if (!text) return;
-                const edge = document.createElement('div');
-                edge.className = `absolute flex justify-center p-1 text-center font-bold leading-none ${edgeLayouts[ei]}`;
-                edge.innerHTML = `<span class="scale-90 overflow-hidden text-ellipsis">${text.replace('\n', '<br>')}</span>`;
-                inner.appendChild(edge);
+            const zones = ["zone-top", "zone-right", "zone-bottom", "zone-left"];
+            piece.edges.forEach((text, i) => {
+                if(!text) return;
+                const zone = document.createElement('div');
+                zone.className = `edge-zone ${zones[i]}`;
+                
+                const span = document.createElement('span');
+                span.className = "rotated-text";
+                span.innerText = text;
+                zone.appendChild(span);
+                rotator.appendChild(zone);
             });
 
-            container.appendChild(inner);
+            container.appendChild(rotator);
             
-            // 회전 버튼
-            const rotBtn = document.createElement('div');
-            rotBtn.className = "absolute bottom-1 right-1 bg-blue-100 text-blue-600 rounded-full p-0.5 opacity-50 hover:opacity-100 no-print";
-            rotBtn.innerHTML = '<i data-lucide="rotate-cw" size="12"></i>';
+            container.onclick = (e) => {
+                e.stopPropagation();
+                if(isBoard && selectedId === null) { onSlotClick(boardState.indexOf(piece)); return; }
+                selectedId = (selectedId === piece.id) ? null : piece.id;
+                render();
+            };
+            
+            const rotBtn = document.createElement('button');
+            rotBtn.className = "absolute bottom-1 right-1 bg-blue-600 text-white rounded-2xl p-3 shadow-lg z-[110] hover:bg-blue-700 active:rotate-90 transition-all";
+            rotBtn.innerHTML = '<i data-lucide="refresh-cw" size="24"></i>';
             rotBtn.onclick = (e) => {
                 e.stopPropagation();
                 piece.rotation = (piece.rotation + 1) % 4;
@@ -209,71 +259,46 @@
             };
             container.appendChild(rotBtn);
 
-            container.onclick = (e) => {
-                e.stopPropagation();
-                if (selectedPieceId === piece.id) selectedPieceId = null;
-                else selectedPieceId = piece.id;
-                render();
-            };
-
             return container;
         }
 
-        function onSlotClick(slotIdx) {
-            if (selectedPieceId !== null) {
-                // 이미 조각이 있으면 맞바꾸기
-                const invIdx = inventory.findIndex(p => p.id === selectedPieceId);
-                const boardIdx = board.findIndex(p => p && p.id === selectedPieceId);
-
-                let movingPiece;
-                if (invIdx !== -1) {
-                    movingPiece = inventory[invIdx];
-                    inventory.splice(invIdx, 1);
-                } else {
-                    movingPiece = board[boardIdx];
-                    board[boardIdx] = null;
-                }
-
-                if (board[slotIdx]) {
-                    inventory.push(board[slotIdx]);
-                }
-                board[slotIdx] = movingPiece;
-                selectedPieceId = null;
-                render();
-            } else if (board[slotIdx]) {
-                // 보드에 있는걸 보관함으로 빼기
-                inventory.push(board[slotIdx]);
-                board[slotIdx] = null;
-                render();
+        function onSlotClick(idx) {
+            if(selectedId !== null) {
+                const invIdx = inventory.findIndex(p => p.id === selectedId);
+                const boardIdx = boardState.findIndex(p => p && p.id === selectedId);
+                let pieceToMove = (invIdx !== -1) ? inventory.splice(invIdx, 1)[0] : boardState.splice(boardIdx, 1)[0];
+                if(boardState[idx]) inventory.push(boardState[idx]);
+                boardState[idx] = pieceToMove;
+                selectedId = null;
+            } else if(boardState[idx]) {
+                inventory.push(boardState[idx]);
+                boardState[idx] = null;
             }
+            render();
+        }
+
+        function resetBoard() {
+            boardState.forEach((p, i) => { if(p) { inventory.push(p); boardState[i] = null; } });
+            selectedId = null;
+            render();
         }
 
         function checkAnswer() {
-            let wrongCount = 0;
+            let wrongs = 0;
             const slots = document.getElementById('board').children;
-            
-            board.forEach((piece, i) => {
+            boardState.forEach((p, i) => {
                 slots[i].classList.remove('slot-wrong');
-                if (!piece || piece.correctSlot !== i || piece.rotation !== 0) {
-                    wrongCount++;
-                    slots[i].classList.add('slot-wrong');
-                }
+                if(!p || p.correctSlot !== i || p.rotation !== 0) { wrongs++; slots[i].classList.add('slot-wrong'); }
             });
 
-            if (wrongCount === 0) {
-                showSuccess();
+            if(wrongs === 0 && !boardState.includes(null)) {
+                document.getElementById('cert-name').innerText = studentName;
+                document.getElementById('cert-time').innerText = "완료 시각: " + new Date().toLocaleString();
+                document.getElementById('success-modal').classList.remove('hidden');
+                document.getElementById('success-modal').classList.add('flex');
             } else {
-                alert(`틀리거나 비어있는 칸이 ${wrongCount}개 있습니다. 빨간색 칸을 확인하세요!`);
+                alert(boardState.includes(null) ? "빈 칸을 모두 채워보세요!" : `틀린 부분이 ${wrongs}군데 있습니다. 빨간 테두리 칸의 식을 다시 확인하세요!`);
             }
-        }
-
-        function showSuccess() {
-            document.getElementById('cert-name').innerText = studentName;
-            document.getElementById('cert-date').innerText = new Date().toLocaleString();
-            document.getElementById('cert-code').innerText = Math.random().toString(36).substring(2, 10).toUpperCase();
-            document.getElementById('success-modal').classList.remove('hidden');
-            document.getElementById('success-modal').classList.add('flex');
-            lucide.createIcons();
         }
     </script>
 </body>
